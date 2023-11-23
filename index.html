@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+
+    #dashboard {
+      width: 80%;
+      margin: 50px auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #logout {
+      float: right;
+      cursor: pointer;
+      color: #007bff;
+      display: none;
+    }
+
+    #logout:hover {
+      text-decoration: underline;
+    }
+
+    #signin-form, #create-account-form, #view-accounts, #change-profile-form, #status-info {
+      margin-top: 20px;
+    }
+
+    #error-msg {
+      color: red;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      max-width: 200px;
+    }
+
+    input, button {
+      margin-bottom: 10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #007bff;
+      color: #fff;
+    }
+
+    .delete-account-btn {
+      cursor: pointer;
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="dashboard">
+    <h1>Welcome, <span id="admin-username">Guest</span>!</h1>
+
+    <div id="signin-form">
+      <h2>Sign In</h2>
+      <form onsubmit="signIn(); return false;">
+        <label for="signin-username">Username:</label>
+        <input type="text" id="signin-username" required>
+        <label for="signin-password">Password:</label>
+        <input type="password" id="signin-password" required>
+        <button type="submit">Sign In</button>
+      </form>
+    </div>
+
+    <div id="create-account-form" style="display: none;">
+      <h2>Create Account</h2>
+      <form onsubmit="createAccount(); return false;">
+        <label for="create-username">New Username:</label>
+        <input type="text" id="create-username" required>
+        <label for="create-password">New Password:</label>
+        <input type="password" id="create-password" required>
+        <button type="submit">Create Account</button>
+      </form>
+    </div>
+
+    <div id="view-accounts" style="display: none;">
+      <h2>Accounts</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Password</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="accounts-table"></tbody>
+      </table>
+    </div>
+
+    <div id="change-profile-form" style="display: none;">
+      <h2>Change Profile</h2>
+      <form onsubmit="changeProfile(); return false;">
+        <label for="change-username">New Username:</label>
+        <input type="text" id="change-username" required>
+        <label for="change-password">New Password:</label>
+        <input type="password" id="change-password" required>
+        <button type="submit">Change Profile</button>
+      </form>
+    </div>
+
+    <div id="status-info" style="display: none;">
+      <h2>Status Information</h2>
+      <p id="online-status"></p>
+      <p id="admin-username-info"></p>
+      <p id="last-online"></p>
+      <h3>Failed Password Attempts</h3>
+      <ul id="failed-attempts"></ul>
+    </div>
+
+    <div id="error-msg"></div>
+    <div id="logout" onclick="logout()">Sign Out</div>
+  </div>
+
+  <script>
+    let loggedIn = false;
+    let profiles = [];
+    let adminStatus = { online: false, lastOnline: null };
+    let failedAttempts = [];
+
+    function signIn() {
+      const username = document.getElementById('signin-username').value;
+      const password = document.getElementById('signin-password').value;
+
+      if (username === 'master' && password === 'password') {
+        loggedIn = true;
+        adminStatus.online = true;
+        adminStatus.lastOnline = new Date();
+        document.getElementById('signin-form').style.display = 'none';
+        document.getElementById('create-account-form').style.display = 'block';
+        document.getElementById('view-accounts').style.display = 'block';
+        document.getElementById('change-profile-form').style.display = 'block';
+        document.getElementById('status-info').style.display = 'block';
+        document.getElementById('logout').style.display = 'block';
+        document.getElementById('admin-username').textContent = username;
+        displayAccounts();
+        displayAdminStatus();
+      } else if (username === 'Kyle' || username === 'Kelly') {
+        const newPassword = prompt(`Welcome, ${username}! Set your password.`);
+        
+        if (newPassword) {
+          alert(`${username}, your password is set.`);
+          loggedIn = true;
+          document.getElementById('signin-form').style.display = 'none';
+          document.getElementById('logout').style.display = 'block';
+          document.getElementById('admin-username').textContent = username;
+        } else {
+          loggedIn = false;
+          document.getElementById('error-msg').textContent = 'Password setting canceled.';
+        }
+      } else {
+        loggedIn = false;
+        recordFailedAttempt(username);
+        document.getElementById('error-msg').textContent = 'Incorrect username or password.';
+      }
+    }
+
+    function logout() {
+      loggedIn = false;
+      adminStatus.online = false;
+      adminStatus.lastOnline = new Date();
+      document.getElementById('signin-form').style.display = 'block';
+      document.getElementById('create-account-form').style.display = 'none';
+      document.getElementById('view-accounts').style.display = 'none';
+      document.getElementById('change-profile-form').style.display = 'none';
+      document.getElementById('status-info').style.display = 'none';
+      document.getElementById('logout').style.display = 'none';
+      document.getElementById('admin-username').textContent = 'Guest';
+      document.getElementById('error-msg').textContent = '';
+    }
+
+    function createAccount() {
+      const newUsername = document.getElementById('create-username').value;
+      const newPassword = document.getElementById('create-password').value;
+
+      if (!isUsernameTaken(newUsername)) {
+        profiles.push({ username: newUsername, password: newPassword });
+        alert(`Account created for ${newUsername}!`);
+        displayAccounts();
+      } else {
+        alert(`Account with username ${newUsername} already exists. Please choose a         different username.`);
+      }
+    }
+
+    function isUsernameTaken(username) {
+      return profiles.some(profile => profile.username === username);
+    }
+
+    function displayAccounts() {
+      const accountsTable = document.getElementById('accounts-table');
+      accountsTable.innerHTML = '';
+
+      profiles.forEach(profile => {
+        const row = accountsTable.insertRow();
+        row.insertCell(0).textContent = profile.username;
+        row.insertCell(1).textContent = profile.password;
+        const deleteCell = row.insertCell(2);
+        deleteCell.innerHTML = `<span class="delete-account-btn" onclick="deleteAccount('${profile.username}')">Delete</span>`;
+      });
+    }
+
+    function deleteAccount(username) {
+      if (loggedIn && username !== 'master') {
+        const index = profiles.findIndex(profile => profile.username === username);
+        if (index !== -1) {
+          profiles.splice(index, 1);
+          alert(`Account for ${username} deleted.`);
+          displayAccounts();
+        }
+      } else {
+        alert("You don't have permission to delete this account.");
+      }
+    }
+
+    function changeProfile() {
+      const newUsername = document.getElementById('change-username').value;
+      const newPassword = document.getElementById('change-password').value;
+
+      if (loggedIn) {
+        const masterProfile = profiles.find(profile => profile.username === 'master');
+        masterProfile.username = newUsername;
+        masterProfile.password = newPassword;
+        alert('Master profile updated!');
+        displayAccounts();
+      }
+    }
+
+    function displayAdminStatus() {
+      const onlineStatus = document.getElementById('online-status');
+      const lastOnline = document.getElementById('last-online');
+      const adminUsernameInfo = document.getElementById('admin-username-info');
+
+      if (adminStatus.online) {
+        onlineStatus.textContent = 'Admin is currently online.';
+        adminUsernameInfo.textContent = `Username: ${document.getElementById('signin-username').value}`;
+        lastOnline.textContent = `Last online: ${adminStatus.lastOnline}`;
+      } else {
+        onlineStatus.textContent = 'Admin is currently offline.';
+        adminUsernameInfo.textContent = '';
+        lastOnline.textContent = '';
+      }
+    }
+
+    function recordFailedAttempt(username) {
+      failedAttempts.push({ username, timestamp: new Date() });
+      displayFailedAttempts();
+    }
+
+    function displayFailedAttempts() {
+      const failedAttemptsList = document.getElementById('failed-attempts');
+      failedAttemptsList.innerHTML = '';
+
+      failedAttempts.forEach(attempt => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `${attempt.username} - ${attempt.timestamp}`;
+        failedAttemptsList.appendChild(listItem);
+      });
+    }
+  </script>
+</body>
+</html>
